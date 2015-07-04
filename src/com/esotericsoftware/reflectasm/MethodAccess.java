@@ -27,7 +27,9 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
-public abstract class MethodAccess {
+import sun.reflect.MagicBridge;
+
+public abstract class MethodAccess extends MagicBridge {
 	private String[] methodNames;
 	private Class[][] parameterTypes;
 	private Class[] returnTypes;
@@ -289,7 +291,7 @@ public abstract class MethodAccess {
 			Method method = declaredMethods[i];
 			int modifiers = method.getModifiers();
 			// if (Modifier.isStatic(modifiers)) continue;
-			if (Modifier.isPrivate(modifiers)) continue;
+			// if (Modifier.isPrivate(modifiers)) continue;
 			methods.add(method);
 		}
 	}

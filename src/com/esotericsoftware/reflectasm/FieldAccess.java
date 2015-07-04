@@ -25,7 +25,9 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
-public abstract class FieldAccess {
+import sun.reflect.MagicBridge;
+
+public abstract class FieldAccess extends MagicBridge {
 	private String[] fieldNames;
 	private Class[] fieldTypes;
 
@@ -101,8 +103,6 @@ public abstract class FieldAccess {
 			for (int i = 0, n = declaredFields.length; i < n; i++) {
 				Field field = declaredFields[i];
 				int modifiers = field.getModifiers();
-				if (Modifier.isStatic(modifiers)) continue;
-				if (Modifier.isPrivate(modifiers)) continue;
 				fields.add(field);
 			}
 			nextClass = nextClass.getSuperclass();
@@ -430,12 +430,15 @@ public abstract class FieldAccess {
 
 			for (int i = 0, n = labels.length; i < n; i++) {
 				if (!labels[i].equals(labelForInvalidTypes)) {
+					Field f = fields.get(i);
 					mv.visitLabel(labels[i]);
 					mv.visitFrame(F_SAME, 0, null, 0, null);
-					mv.visitVarInsn(ALOAD, 1);
-					mv.visitTypeInsn(CHECKCAST, classNameInternal);
+					if(!Modifier.isStatic(f.getModifiers())) {
+						mv.visitVarInsn(ALOAD, 1);
+						mv.visitTypeInsn(CHECKCAST, classNameInternal);
+					}
 					mv.visitVarInsn(loadValueInstruction, 3);
-					mv.visitFieldInsn(PUTFIELD, classNameInternal, fields.get(i).getName(), typeNameInternal);
+					mv.visitFieldInsn(Modifier.isStatic(f.getModifiers()) ? PUTSTATIC : PUTFIELD, classNameInternal, f.getName(), typeNameInternal);
 					mv.visitInsn(RETURN);
 				}
 			}
@@ -518,13 +521,15 @@ public abstract class FieldAccess {
 			mv.visitTableSwitchInsn(0, labels.length - 1, defaultLabel, labels);
 
 			for (int i = 0, n = labels.length; i < n; i++) {
-				Field field = fields.get(i);
+				Field f = fields.get(i);
 				if (!labels[i].equals(labelForInvalidTypes)) {
 					mv.visitLabel(labels[i]);
 					mv.visitFrame(F_SAME, 0, null, 0, null);
-					mv.visitVarInsn(ALOAD, 1);
-					mv.visitTypeInsn(CHECKCAST, classNameInternal);
-					mv.visitFieldInsn(GETFIELD, classNameInternal, field.getName(), typeNameInternal);
+					if(!Modifier.isStatic(f.getModifiers())) {
+						mv.visitVarInsn(ALOAD, 1);
+						mv.visitTypeInsn(CHECKCAST, classNameInternal);
+					}
+					mv.visitFieldInsn(Modifier.isStatic(f.getModifiers()) ? GETSTATIC : GETFIELD, classNameInternal, f.getName(), typeNameInternal);
 					mv.visitInsn(returnValueInstruction);
 				}
 			}

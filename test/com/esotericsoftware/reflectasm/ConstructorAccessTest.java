@@ -51,11 +51,9 @@ public class ConstructorAccessTest extends TestCase {
 
 	public void testHasPrivateConstructor () {
 		try {
-			ConstructorAccess.get(HasPrivateConstructor.class);
-			assertTrue(false);
-		}
-		catch (RuntimeException re) {
-			System.out.println("Expected exception happened: " + re);
+			ConstructorAccess<HasPrivateConstructor> access = ConstructorAccess.get(HasPrivateConstructor.class);
+			HasPrivateConstructor newInstance = access.newInstance();
+			assertEquals("cow", newInstance.getMoo());
 		}
 		catch (Throwable t) {
 			System.out.println("Unexpected exception happened: " + t);
@@ -152,7 +150,7 @@ public class ConstructorAccessTest extends TestCase {
 			return true;
 		}
 	}
-	
+
 	static public class HasArgumentConstructor {
 		public String moo;
 
@@ -170,7 +168,7 @@ public class ConstructorAccessTest extends TestCase {
 			} else if (!moo.equals(other.moo)) return false;
 			return true;
 		}
-		
+
 		public String getMoo() {
 			return moo;
 		}

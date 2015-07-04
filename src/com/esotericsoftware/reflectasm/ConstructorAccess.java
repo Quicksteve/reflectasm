@@ -22,7 +22,9 @@ import java.lang.reflect.Modifier;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 
-public abstract class ConstructorAccess<T> {
+import sun.reflect.MagicBridge;
+
+public abstract class ConstructorAccess<T> extends MagicBridge {
 	boolean isNonStaticMemberClass;
 
 	public boolean isNonStaticMemberClass () {
@@ -49,7 +51,7 @@ public abstract class ConstructorAccess<T> {
 		String accessClassName = className + "ConstructorAccess";
 		if (accessClassName.startsWith("java.")) accessClassName = "reflectasm." + accessClassName;
 		Class accessClass;
-		
+
 		AccessClassLoader loader = AccessClassLoader.get(type);
 		synchronized (loader) {
 			try {
@@ -68,9 +70,6 @@ public abstract class ConstructorAccess<T> {
 					} catch (Exception ex) {
 						throw new RuntimeException("Class cannot be created (missing no-arg constructor): " + type.getName(), ex);
 					}
-					if (Modifier.isPrivate(modifiers)) {
-						throw new RuntimeException("Class cannot be created (the no-arg constructor is private): " + type.getName());
-					}
 				} else {
 					enclosingClassNameInternal = enclosingType.getName().replace('.', '/');
 					try {
@@ -79,10 +78,6 @@ public abstract class ConstructorAccess<T> {
 					} catch (Exception ex) {
 						throw new RuntimeException("Non-static member class cannot be created (missing enclosing class constructor): "
 							+ type.getName(), ex);
-					}
-					if (Modifier.isPrivate(modifiers)) {
-						throw new RuntimeException(
-							"Non-static member class cannot be created (the enclosing class constructor is private): " + type.getName());
 					}
 				}
 				String superclassNameInternal = Modifier.isPublic(modifiers) ?
