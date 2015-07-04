@@ -19,6 +19,7 @@ import static org.objectweb.asm.Opcodes.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
@@ -100,11 +101,7 @@ public abstract class FieldAccess extends MagicBridge {
 		Class nextClass = type;
 		while (nextClass != Object.class) {
 			Field[] declaredFields = nextClass.getDeclaredFields();
-			for (int i = 0, n = declaredFields.length; i < n; i++) {
-				Field field = declaredFields[i];
-				int modifiers = field.getModifiers();
-				fields.add(field);
-			}
+			fields.addAll(Arrays.asList(declaredFields));
 			nextClass = nextClass.getSuperclass();
 		}
 
@@ -195,8 +192,10 @@ public abstract class FieldAccess extends MagicBridge {
 
 				mv.visitLabel(labels[i]);
 				mv.visitFrame(F_SAME, 0, null, 0, null);
-				mv.visitVarInsn(ALOAD, 1);
-				mv.visitTypeInsn(CHECKCAST, classNameInternal);
+				if(!Modifier.isStatic(field.getModifiers())) {
+					mv.visitVarInsn(ALOAD, 1);
+					mv.visitTypeInsn(CHECKCAST, classNameInternal);
+				}
 				mv.visitVarInsn(ALOAD, 3);
 
 				switch (fieldType.getSort()) {
@@ -240,7 +239,7 @@ public abstract class FieldAccess extends MagicBridge {
 					break;
 				}
 
-				mv.visitFieldInsn(PUTFIELD, classNameInternal, field.getName(), fieldType.getDescriptor());
+				mv.visitFieldInsn(Modifier.isStatic(field.getModifiers()) ? PUTSTATIC : PUTFIELD, classNameInternal, field.getName(), fieldType.getDescriptor());
 				mv.visitInsn(RETURN);
 			}
 
@@ -271,9 +270,11 @@ public abstract class FieldAccess extends MagicBridge {
 
 				mv.visitLabel(labels[i]);
 				mv.visitFrame(F_SAME, 0, null, 0, null);
-				mv.visitVarInsn(ALOAD, 1);
-				mv.visitTypeInsn(CHECKCAST, classNameInternal);
-				mv.visitFieldInsn(GETFIELD, classNameInternal, field.getName(), Type.getDescriptor(field.getType()));
+				if(!Modifier.isStatic(field.getModifiers())) {
+					mv.visitVarInsn(ALOAD, 1);
+					mv.visitTypeInsn(CHECKCAST, classNameInternal);
+				}
+				mv.visitFieldInsn(Modifier.isStatic(field.getModifiers()) ? GETSTATIC : GETFIELD, classNameInternal, field.getName(), Type.getDescriptor(field.getType()));
 
 				Type fieldType = Type.getType(field.getType());
 				switch (fieldType.getSort()) {
@@ -338,11 +339,14 @@ public abstract class FieldAccess extends MagicBridge {
 
 			for (int i = 0, n = labels.length; i < n; i++) {
 				if (!labels[i].equals(labelForInvalidTypes)) {
+					Field field = fields.get(i);
 					mv.visitLabel(labels[i]);
 					mv.visitFrame(F_SAME, 0, null, 0, null);
-					mv.visitVarInsn(ALOAD, 1);
-					mv.visitTypeInsn(CHECKCAST, classNameInternal);
-					mv.visitFieldInsn(GETFIELD, classNameInternal, fields.get(i).getName(), "Ljava/lang/String;");
+					if(!Modifier.isStatic(field.getModifiers())) {
+						mv.visitVarInsn(ALOAD, 1);
+						mv.visitTypeInsn(CHECKCAST, classNameInternal);
+					}
+					mv.visitFieldInsn(Modifier.isStatic(field.getModifiers()) ? GETSTATIC : GETFIELD, classNameInternal, field.getName(), "Ljava/lang/String;");
 					mv.visitInsn(ARETURN);
 				}
 			}
@@ -430,15 +434,15 @@ public abstract class FieldAccess extends MagicBridge {
 
 			for (int i = 0, n = labels.length; i < n; i++) {
 				if (!labels[i].equals(labelForInvalidTypes)) {
-					Field f = fields.get(i);
+					Field field = fields.get(i);
 					mv.visitLabel(labels[i]);
 					mv.visitFrame(F_SAME, 0, null, 0, null);
-					if(!Modifier.isStatic(f.getModifiers())) {
+					if(!Modifier.isStatic(field.getModifiers())) {
 						mv.visitVarInsn(ALOAD, 1);
 						mv.visitTypeInsn(CHECKCAST, classNameInternal);
 					}
 					mv.visitVarInsn(loadValueInstruction, 3);
-					mv.visitFieldInsn(Modifier.isStatic(f.getModifiers()) ? PUTSTATIC : PUTFIELD, classNameInternal, f.getName(), typeNameInternal);
+					mv.visitFieldInsn(Modifier.isStatic(field.getModifiers()) ? PUTSTATIC : PUTFIELD, classNameInternal, field.getName(), typeNameInternal);
 					mv.visitInsn(RETURN);
 				}
 			}
@@ -521,15 +525,15 @@ public abstract class FieldAccess extends MagicBridge {
 			mv.visitTableSwitchInsn(0, labels.length - 1, defaultLabel, labels);
 
 			for (int i = 0, n = labels.length; i < n; i++) {
-				Field f = fields.get(i);
+				Field field = fields.get(i);
 				if (!labels[i].equals(labelForInvalidTypes)) {
 					mv.visitLabel(labels[i]);
 					mv.visitFrame(F_SAME, 0, null, 0, null);
-					if(!Modifier.isStatic(f.getModifiers())) {
+					if(!Modifier.isStatic(field.getModifiers())) {
 						mv.visitVarInsn(ALOAD, 1);
 						mv.visitTypeInsn(CHECKCAST, classNameInternal);
 					}
-					mv.visitFieldInsn(Modifier.isStatic(f.getModifiers()) ? GETSTATIC : GETFIELD, classNameInternal, f.getName(), typeNameInternal);
+					mv.visitFieldInsn(Modifier.isStatic(field.getModifiers()) ? GETSTATIC : GETFIELD, classNameInternal, field.getName(), typeNameInternal);
 					mv.visitInsn(returnValueInstruction);
 				}
 			}
